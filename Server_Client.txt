@@ -1,0 +1,104 @@
+//server
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class PingPongServer {
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: java PingPongServer <port>");
+            System.exit(1);
+        }
+
+        int port = Integer.parseInt(args[0]);
+
+        try {
+            ServerSocket serverSocket = new ServerSocket(port);
+            System.out.println("Server is listening on port " + port);
+
+            ExecutorService executorService = Executors.newCachedThreadPool();
+
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("New client connected");
+
+                // Handle each client in a new thread
+                executorService.execute(() -> handleClient(clientSocket));
+            }
+        } catch (IOException e) {
+            System.err.println("Error in the server: " + e.getMessage());
+        }
+    }
+
+    private static void handleClient(Socket clientSocket) {
+        try (
+            BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true)
+        ) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if ("ping".equalsIgnoreCase(line.trim())) {
+                    System.out.println("Received ping from client");
+                    writer.println("pong");
+                    System.out.println("Sent pong to client");
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error handling client: " + e.getMessage());
+        }
+    }
+}
+
+//client
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+
+public class PingPongClient {
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.err.println("Usage: java PingPongClient <server-hostname> <server-port>");
+            System.exit(1);
+        }
+
+        String serverHostname = args[0];
+        int serverPort = Integer.parseInt(args[1]);
+
+        try {
+            Socket socket = new Socket(serverHostname, serverPort);
+            System.out.println("Connected to server: " + serverHostname + ":" + serverPort);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+
+            while (true) {
+                writer.println("ping");
+                System.out.println("Sent ping to server");
+
+                String response = reader.readLine();
+                if ("pong".equalsIgnoreCase(response.trim())) {
+                    System.out.println("Received pong from server");
+                } else {
+                    System.out.println("Unexpected response from server: " + response);
+                }
+
+                // Wait for 1 second before sending the next ping
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error in the client: " + e.getMessage());
+            System.exit(1);
+        }
+    }
+}

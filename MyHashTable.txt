@@ -1,0 +1,124 @@
+import java.util.LinkedList;
+
+class KeyValuePair {
+    String key;
+    String value;
+
+    public KeyValuePair(String key, String value) {
+        this.key = key;
+        this.value = value;
+    }
+}
+
+class MyHashTable {
+    private static final int INITIAL_CAPACITY = 16;
+    private static final double LOAD_FACTOR_THRESHOLD = 0.7;
+
+    private int capacity;
+    private int size;
+    private LinkedList<KeyValuePair>[] table;
+
+    public MyHashTable() {
+        this.capacity = INITIAL_CAPACITY;
+        this.size = 0;
+        this.table = new LinkedList[capacity];
+    }
+
+    private int hashFunction(String key) {
+        // A simple hash function: sum of ASCII values of characters in the key
+        int hash = 0;
+        for (char c : key.toCharArray()) {
+            hash += (int) c;
+        }
+        return hash % capacity;
+    }
+
+    private void resize() {
+        int newCapacity = capacity * 2;
+        LinkedList<KeyValuePair>[] oldTable = table;
+
+        capacity = newCapacity;
+        size = 0;
+        table = new LinkedList[newCapacity];
+
+        // Rehash all key-value pairs into the new table
+        for (LinkedList<KeyValuePair> entry : oldTable) {
+            if (entry != null) {
+                for (KeyValuePair pair : entry) {
+                    add(pair.key, pair.value);
+                }
+            }
+        }
+    }
+
+    public void add(String key, String value) {
+        int index = hashFunction(key);
+
+        // Check for collision and handle it using separate chaining
+        if (table[index] == null) {
+            table[index] = new LinkedList<>();
+        }
+
+        for (KeyValuePair pair : table[index]) {
+            if (pair.key.equals(key)) {
+                // Update value if key already exists
+                pair.value = value;
+                return;
+            }
+        }
+
+        table[index].add(new KeyValuePair(key, value));
+        size++;
+
+        // Check load factor and resize if necessary
+        if ((double) size / capacity > LOAD_FACTOR_THRESHOLD) {
+            resize();
+        }
+    }
+
+    public String get(String key) {
+        int index = hashFunction(key);
+
+        if (table[index] != null) {
+            for (KeyValuePair pair : table[index]) {
+                if (pair.key.equals(key)) {
+                    return pair.value;
+                }
+            }
+        }
+
+        // Key not found
+        return null;
+    }
+
+    public void remove(String key) {
+        int index = hashFunction(key);
+
+        if (table[index] != null) {
+            table[index].removeIf(pair -> pair.key.equals(key));
+            size--;
+
+            // Check load factor and resize if necessary
+            if ((double) size / capacity < 1 - LOAD_FACTOR_THRESHOLD) {
+                resize();
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        MyHashTable hashTable = new MyHashTable();
+        hashTable.add("apple", "red");
+        hashTable.add("banana", "yellow");
+        hashTable.add("grape", "purple");
+
+        // O(1) run time for value lookup
+        System.out.println(hashTable.get("banana"));  // Output: yellow
+
+        // Resizing of the hash table when adding/removing key-value pairs
+        hashTable.add("orange", "orange");
+        hashTable.remove("banana");
+
+        // Check the new capacity after resizing
+        System.out.println(hashTable.capacity);  // Output: 32
+    }
+}
